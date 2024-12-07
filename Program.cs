@@ -4,66 +4,102 @@ using System.Windows.Forms;
 
 namespace Graph
 {
-    public partial class Form1 : Form
+    public class GraphForm : Form
     {
-        Graphics graph;
-        Pen pen;
-        public Form1()
+        // Константи для налаштувань графіка
+        private const double XStart = -1; // Початкове значення X
+        private const double XEnd = 2.3;  // Кінцеве значення X
+        private const double DeltaX = 0.7; // Крок для X
+
+        public GraphForm()
         {
-            InitializeComponent();
-            graph = CreateGraphics();
-            pen = new Pen(Color.SlateBlue, 2);
-            this.Resize += new EventHandler(Form1_Resize);
+            // Налаштування форми
+            this.Text = "Графік функції";
+            this.Size = new Size(800, 600);
+            this.BackColor = Color.White;
+
+            // Перерисовка графіка при зміні розміру
+            this.Resize += (s, e) => this.Invalidate(); 
+            // Перерисовка графіка при малюванні
+            this.Paint += (s, e) => DrawGraph(e.Graphics); 
         }
 
-        private void Form1_Resize(object sender, EventArgs e)
+        private void DrawGraph(Graphics graph)
         {
-            // Очищуємо область перед новим малюванням
+            // Очищаємо форму перед малюванням
             graph.Clear(Color.White);
-            DrawGraph();
-        }
 
-        private void DrawGraph()
-        {
-            // Встановлюємо діапазон значень x та крок
-            double xStart = -1;
-            double xEnd = 2.3;
-            double step = 0.7;
-            
-            // Масштабування для пристосування до вікна
-            float width = this.ClientSize.Width;
-            float height = this.ClientSize.Height;
-            
-            // Центруємо графік по осі X і Y
-            float originX = width / 2;
-            float originY = height / 2;
-            
-            // Малюємо осі координат
-            graph.DrawLine(Pens.Black, 0, originY, width, originY); // X-axis
-            graph.DrawLine(Pens.Black, originX, 0, originX, height); // Y-axis
-            
-            // Обчислюємо точку на графіку для кожного x
-            for (double x = xStart; x <= xEnd; x += step)
+            using (Pen axisPen = new Pen(Color.Black, 1)) // Перо для осей
+            using (Pen pen = new Pen(Color.SlateBlue, 2)) // Перо для графіка
             {
-                double y = CalculateY(x); // Обчислюємо y по формулі
+                float widthForm = this.ClientSize.Width;
+                float heightForm = this.ClientSize.Height;
 
-                // Масштабуємо значення для відображення на екрані
-                float screenX = (float)(originX + x * 50); // 50 - коефіцієнт масштабування по осі X
-                float screenY = (float)(originY - y * 50); // 50 - коефіцієнт масштабування по осі Y
+                float offsetY = heightForm / 2; // Центрування графіка по осі Y
 
-                // Малюємо точку на графіку
-                graph.FillEllipse(Brushes.SlateBlue, screenX, screenY, 2, 2);
+                // Визначаємо масштабування
+                double scaleX = widthForm / (XEnd - XStart);
+                double scaleY = heightForm / 4;
+
+                // Малюємо осі X і Y
+                graph.DrawLine(axisPen, 0, offsetY, widthForm, offsetY); // Вісь X
+                graph.DrawLine(axisPen, widthForm / 2, 0, widthForm / 2, heightForm); // Вісь Y
+
+                // Шрифт для підписів
+                Font font = new Font("Arial", 10);
+                Brush brush = Brushes.Black;
+
+                // Підписи для осі X
+                double tStep = 1.0; 
+                for (double t = XStart; t <= XEnd; t += tStep)
+                {
+                    int screenX = (int)((t - XStart) * scaleX);
+                    graph.DrawString(t.ToString("0.0"), font, brush, screenX, offsetY + 5);
+                }
+
+                // Підписи для осі Y
+                double yStep = 0.5;
+                for (double y = -2.0; y <= 2.0; y += yStep)
+                {
+                    int screenY = (int)(offsetY - y * scaleY);
+                    graph.DrawString(y.ToString("0.0"), font, brush, widthForm / 2 + 5, screenY - 10);
+                }
+
+                // Малювання графіка функції y = (e^(2x) - 8) / (x + 3)
+                double dt = 0.1;  // Крок для X
+                int screenX1 = 0, screenY1 = 0;
+                bool firstPoint = true;
+
+                for (double t = XStart; t <= XEnd; t += DeltaX)
+                {
+                    // Обчислюємо значення функції
+                    double y = (Math.Exp(2 * t) - 8) / (t + 3);
+
+                    // Перетворюємо координати функції на координати екрану
+                    int screenX2 = (int)((t - XStart) * scaleX);
+                    int screenY2 = (int)(offsetY - y * scaleY);
+
+                    if (!firstPoint)
+                    {
+                        graph.DrawLine(pen, screenX1, screenY1, screenX2, screenY2); // Малюємо лінію
+                    }
+                    else
+                    {
+                        firstPoint = false;
+                    }
+
+                    // Оновлюємо початкові координати для наступної точки
+                    screenX1 = screenX2;
+                    screenY1 = screenY2;
+                }
             }
         }
 
-        // Функція для обчислення значення y по заданій формулі
-        private double CalculateY(double x)
+        [STAThread]
+        public static void Main()
         {
-            if (x + 3 == 0)
-            {
-                return double.NaN; // уникнути ділення на нуль
-            }
-            return (Math.Exp(2 * x) - 8) / (x + 3);
+            Application.EnableVisualStyles();
+            Application.Run(new GraphForm());
         }
     }
 }
